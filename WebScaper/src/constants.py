@@ -1,1 +1,1 @@
-BASE_URL = "https://careers.google.com/teams/"
+BASE_URL = "https://careers.google.com/jobs/results/?page=1&sort_by=date"
