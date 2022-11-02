@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 import time
 from src.jsonl_tool import dicts_to_jsonl
+import src.constants as const
 
 class Driver(webdriver.Chrome):
     def __init__(self, teardown = False):
@@ -14,19 +15,6 @@ class Driver(webdriver.Chrome):
         if self.teardown:
             time.sleep(3)
             self.quit()
-    
-    def load_a_page(self, url):
-        self.get(url)
-        time.sleep(1)
-
-    def select_team(self):
-        team = self.find_element(By.LINK_TEXT, "Engineering & Technology")
-        team.click()
-
-    def select_a_role(self):
-        role_link = self.find_element(By.LINK_TEXT, "Software Engineer").get_attribute('href')
-        self.get(role_link)
-
 
     def check_exists_by_x_path(self, x_path):
         try:
@@ -46,36 +34,51 @@ class Driver(webdriver.Chrome):
         return int(count)
     
     def get_all(self):
-        page_count = self.get_pages_count()
-        for i in range(page_count):
-             url = f"https://careers.google.com/jobs/results/?page={i+1}&sort_by=date"
-             self.get(url)
-             self.get_all_links(filename=f'./data/jobs_page_{i+1}')
-             print(f"Save jobs_page_{i+1}")
 
-    def get_all_links(self, filename):
+        for role in const.ENGINNERING_ROLES:
+            role_url = const.BASE_URL+role
+            self.get(role_url)
+            page_count = self.get_pages_count()
+            for i in range(page_count):
+                role_url_page = role_url+f"&page={i+1}"
+                self.get(role_url_page)
+                links = self.get_all_links()
+                filename = f"jobs_{role}_{i+1}"
+                self.save_contents(links, role, filename)
+                print(f"Save jobs_page_{filename}")
+
+    def get_all_links(self):
         link_elements = self.find_elements(By.CLASS_NAME, "gc-card")
 
         links = []
         for link_element in link_elements:
             links.append(link_element.get_attribute('href'))
+        return links
 
+    def save_contents(self, links, role, filename):
         contents = []
         for link in links:
             self.get(link)
-            # time.sleep(1)
+            time.sleep(1)
             entry = {
-                    "orginalTtile":"",
-                    "postDate":"",
+                    "role":"",
+                    "title":"",
+                    "datePosted":"",
                     "inOfficeLocation":"",
                     "isRemoteEligible":"",
                     "minQua":[],
                     "preferQua":[],
                     "responsibilities":[],
-                    "jobDescription":""
+                    "jobDescription":"",
+                    "link":""
             }
-            entry["orginalTtile"] = self.find_element(By.CLASS_NAME, "gc-job-detail__title").text.strip()
-            entry["postDate"] = self.find_element(By.CSS_SELECTOR, 'span[itemprop="datePosted"]').get_attribute('innerHTML').strip()
+            entry["role"] = role
+            entry["link"] = link
+            entry["title"] = self.find_element(By.CSS_SELECTOR, 'h1[itemprop="title"]').get_attribute('innerHTML').strip()
+            print(f'title is {entry["title"]}')
+            entry["datePosted"] = self.find_element(By.XPATH, '//span[@itemprop="datePosted"]').get_attribute('innerHTML').strip()
+            print(f'date is {entry["datePosted"]}')
+
 
             if self.check_exists_by_class_name(class_name="gc-job-detail__instruction"):
                 if self.check_exists_by_x_path(x_path="//b[contains(text(), 'In-office')]"):
@@ -106,22 +109,35 @@ class Driver(webdriver.Chrome):
                 entry["inOfficeLocation"] = address
                 entry["isRemoteEligible"] = 0
             
-            min_quas = self.find_elements(By.XPATH, '//div[@itemprop="qualifications"]//child::ul[1]/li')
-            for min_qua in min_quas:
-                entry["minQua"].append(min_qua.get_attribute('innerHTML').replace("<br>", "").strip())
-
-            prefer_quas = self.find_elements(By.XPATH, '//div[@itemprop="qualifications"]//child::ul[2]/li')
-            for prefer_qua in prefer_quas:
-                entry["preferQua"].append(prefer_qua.get_attribute('innerHTML').replace("<br>", "").strip())
-
-            resps = self.find_elements(By.XPATH, '//div[@itemprop="responsibilities"]//child::ul/li')
-            for resp in resps:
-                entry["responsibilities"].append(resp.get_attribute('innerHTML').replace("<br>", "").replace("</span>","").replace("<span>", "").strip())
-        
-            jds = self.find_elements(By.XPATH, '//div[@itemprop="description"]//child::p')
-            for jd in jds:
-                entry["jobDescription"] += jd.get_attribute('innerHTML').replace("<br>", "").strip()
+            try:
+                min_quas = self.find_elements(By.XPATH, '//div[@itemprop="qualifications"]//child::ul[1]/li')
+                for min_qua in min_quas:
+                    entry["minQua"].append(min_qua.get_attribute('innerHTML').replace("<br>", "").strip())
+            except:
+                entry["minQua"] = "null"
+                continue
             
+            try:
+                prefer_quas = self.find_elements(By.XPATH, '//div[@itemprop="qualifications"]//child::ul[2]/li')
+                for prefer_qua in prefer_quas:
+                    entry["preferQua"].append(prefer_qua.get_attribute('innerHTML').replace("<br>", "").strip())
+            except:
+                entry["preferQua"] = "null"
+
+            try:
+                resps = self.find_elements(By.XPATH, '//div[@itemprop="responsibilities"]//child::ul/li')
+                for resp in resps:
+                    entry["responsibilities"].append(resp.get_attribute('innerHTML').replace("<br>", "").replace("</span>","").replace("<span>", "").strip())
+            except:
+                entry["responsibilities"] = "null"
+            
+            try:
+                jds = self.find_elements(By.XPATH, '//div[@itemprop="description"]//child::p')
+                for jd in jds:
+                    entry["jobDescription"] += jd.get_attribute('innerHTML').replace("<br>", "").strip()
+            except:
+                entry["jobDescription"] = "null"
+
             contents.append(entry)
 
         dicts_to_jsonl(contents, filename)
