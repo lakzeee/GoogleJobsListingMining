@@ -2,8 +2,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 import time
-from src.jsonl_tool import dicts_to_jsonl
 import src.constants as const
+from src.json_tool import dicts_to_json
 
 class Driver(webdriver.Chrome):
     def __init__(self, teardown = False):
@@ -123,6 +123,7 @@ class Driver(webdriver.Chrome):
                     entry["preferQua"].append(prefer_qua.get_attribute('innerHTML').replace("<br>", "").strip())
             except:
                 entry["preferQua"] = "null"
+                continue
 
             try:
                 resps = self.find_elements(By.XPATH, '//div[@itemprop="responsibilities"]//child::ul/li')
@@ -130,6 +131,7 @@ class Driver(webdriver.Chrome):
                     entry["responsibilities"].append(resp.get_attribute('innerHTML').replace("<br>", "").replace("</span>","").replace("<span>", "").strip())
             except:
                 entry["responsibilities"] = "null"
+                continue
             
             try:
                 jds = self.find_elements(By.XPATH, '//div[@itemprop="description"]//child::p')
@@ -137,7 +139,8 @@ class Driver(webdriver.Chrome):
                     entry["jobDescription"] += jd.get_attribute('innerHTML').replace("<br>", "").strip()
             except:
                 entry["jobDescription"] = "null"
+                continue
 
             contents.append(entry)
 
-        dicts_to_jsonl(contents, filename)
+        dicts_to_json(contents, filename)
