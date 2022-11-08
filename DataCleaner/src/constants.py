@@ -79,6 +79,7 @@ CUSTOM_WORDS = [
         "across",
         "within",
         "div",
+        "following"
     ]
 
 ENGINNERING_ROLES = [

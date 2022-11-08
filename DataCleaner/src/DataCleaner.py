@@ -1,11 +1,14 @@
 import json
 import re
+
 from re_tools import drop_day_week_and_year
 from my_tools import split_by_stop_word
+import constants as const
 
 
-class DataCleaner():
+class DataCleaner:
     def __init__(self, file_name):
+        self.has_empty = {}
         with open(file_name, "r") as f:
             self.json_list = json.load(f)
             f.close()
@@ -26,7 +29,6 @@ class DataCleaner():
             self.json_list[i].pop("jobDescription")
 
     def check_for_missing_entry(self):
-        self.has_empty = {}
         n = self.get_len()
         for i in range(n):
             for k in self.json_list[i]:
@@ -88,33 +90,35 @@ class DataCleaner():
             }
             self.json_list[i]["YOE"] = []
             self.json_list[i]["Experiences"] = []
+            self.json_list[i]["ProgrammingSkills"] = []
             for mq in min_quas:
                 mq = drop_day_week_and_year(mq)
                 mq = split_by_stop_word(mq)
-                self.parse_degree(mq, i)
-                self.parse_yoe_and_experiences(mq, i)
+                self.parse_degree_yoe_progskills(mq, i)
 
             for pq in prefer_quas:
                 pq = drop_day_week_and_year(pq)
                 pq = split_by_stop_word(pq)
-                self.parse_degree(pq, i)
-                self.parse_yoe_and_experiences(pq, i)
+                self.parse_degree_yoe_progskills(pq, i)
             self.json_list[i].pop("minQua")
             self.json_list[i].pop("preferQua")
 
-    def parse_degree(self, data, i):
-        for w in data:
-            if w == "bachelor" or w == "master" or w == "phd":
-                self.json_list[i]["Degree"]["level"].append(w)
-            else:
-                self.json_list[i]["Degree"]["field"].append(w)
-
-    def parse_yoe_and_experiences(self, data, i):
-        for w in data:
-            if "year" in w:
-                self.json_list[i]["YOE"].append(w)
-            else:
-                self.json_list[i]["Experiences"].append(w)
+    def parse_degree_yoe_progskills(self, data, i):
+        if "bachelor" in data or "master" in data or "phd" in data:
+            for w in data:
+                if w == "bachelor" or w == "master" or w == "phd":
+                    self.json_list[i]["Degree"]["level"].append(w)
+                else:
+                    self.json_list[i]["Degree"]["field"].append(w)
+        else:
+            for w in data:
+                if "year" in w:
+                    self.json_list[i]["YOE"].append(w)
+                else:
+                    if w in const.NAMES:
+                        self.json_list[i]["ProgrammingSkills"].append(w)
+                    else:
+                        self.json_list[i]["Experiences"].append(w)
 
     def save_as_json(self, file_name):
         with open(f'{file_name}_CLEANED', "w") as out:
