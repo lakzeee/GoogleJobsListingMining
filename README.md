@@ -1,1 +1,1 @@
-this is a goole web scraper using Selenium and beautiful soup.
+DTSA 5506 Data Mining Final Project
